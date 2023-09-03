@@ -39,7 +39,7 @@ public class pushOutputsAction {
         String outputPaths = "";
         for (DataSource output : mp.getOutputs()) {
             Path path = Paths.get(modelOutputDestination + output.getName());
-            outputPaths += path + ","; // this will leave an extra comma at the end
+            outputPaths += output.getPaths()[0] + ","; // this will leave an extra comma at the end
             byte[] data;
             try {
                 data = Files.readAllBytes(path);
@@ -49,7 +49,7 @@ public class pushOutputsAction {
                 return;
             }
         }
-        if(outputPaths.length() > 0 && jobID != "") { //ensure there were outputs
+        if(outputPaths.length() > 0 && jobID != "") { //ensure there were outputs and that this was called with a jobID
             write_paths_to_s3(outputPaths.substring(0, outputPaths.length()-1)); // truncate the extra comma at the end
         }
     }
