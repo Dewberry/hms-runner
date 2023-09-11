@@ -23,7 +23,6 @@ public class hmsrunner  {
     public static void main(String[] args) {
         System.out.println(PLUGINNAME + " says hello!");
         PluginManager pm;
-        String jobID = ""; //the ID of the job that is running this hms-runner, passed in the json cmd arg, leave empty if N/A
         if(args.length == 1) {
             Map<String, String> argsMap = new HashMap<String, String>();
             ObjectMapper mapper = new ObjectMapper();
@@ -33,12 +32,7 @@ public class hmsrunner  {
                     System.err.println("ERROR: Command line parameter JSON must include `root` and `manifestID` fields");
                     System.exit(1);
                 }
-                if(!argsMap.containsKey("jobID")){
-                    System.err.println("ERROR: Command line parameter JSON must include `jobID` field");
-                    System.exit(1);
-                }
                 pm = PluginManager.getInstance(argsMap.get("root"), argsMap.get("manifestID"));
-                jobID = argsMap.get("jobID");
             } catch (Exception e) {
                 System.err.println("ERROR: Command line parameter must be a JSON formatted string");
                 System.exit(1);
@@ -82,7 +76,7 @@ public class hmsrunner  {
                     hmsFilePath = dia.getHMSFilePath();
                     break;
                 case "push_outputs":
-                    pushOutputsAction poa = new pushOutputsAction(a, mp, pm, modelOutputDestination, jobID);
+                    pushOutputsAction poa = new pushOutputsAction(a, mp, pm, modelOutputDestination);
                     poa.computeAction();
                     break;
                 case "compute_forecast":

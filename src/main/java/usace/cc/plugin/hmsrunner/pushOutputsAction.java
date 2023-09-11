@@ -26,14 +26,12 @@ public class pushOutputsAction {
     private Payload mp;
     private PluginManager pm;
     private String modelOutputDestination;
-    private String jobID;
 
-    public pushOutputsAction(Action a, Payload mp, PluginManager pm, String modelOutputDestination, String jobID) {
+    public pushOutputsAction(Action a, Payload mp, PluginManager pm, String modelOutputDestination) {
         this.action = a;
         this.mp = mp;
         this.pm = pm;
         this.modelOutputDestination = modelOutputDestination;
-        this.jobID = jobID;
     }
     public void computeAction(){
         String outputPaths = "";
@@ -49,46 +47,25 @@ public class pushOutputsAction {
                 return;
             }
         }
-        if(outputPaths.length() > 0 && jobID != "") { //ensure there were outputs and that this was called with a jobID
-            write_paths_to_s3(outputPaths.substring(0, outputPaths.length()-1)); // truncate the extra comma at the end
+        // now print the paths
+        if(outputPaths.length() > 0) { //if there were outputs
+            outputPaths = outputPaths.substring(0, outputPaths.length()-1); // truncate the extra comma at the end
+            String[] pathsArray = outputPaths.split(",");
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, String[]> output = new HashMap<String, String[]>();
+            output.put("message", pathsArray); // the id for the output of the hms-runner process is "message"
+
+            try {
+                String messageJson = objectMapper.writeValueAsString(output);
+                String jsonOutput = "{" + "\"plugin_results\":" + messageJson + "}"; // put into json format needed for process-api
+                System.out.println(jsonOutput);
+            } catch(JsonProcessingException e) {
+                e.printStackTrace();
+            }
+        } else { //if theres no outputs, print empty output
+            String jsonOutput = "{\"plugin_results\":{\"message\":[]}}"; // put into format needed for process-api
+            System.out.println(jsonOutput);
         }
-    }
-
-    /**
-     *  Converts comma-separated paths to an array to put into a json for s3
-     */
-    private void write_paths_to_s3(String paths) {
-        String bucketName = System.getenv("S3_BUCKET");
-        String key = bucketName + "/" + jobID + ".json";
-        String[] pathsArray = paths.split(",");
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        Map<String, String[]> output = new HashMap<String, String[]>();
-        output.put("message", pathsArray);
-
-        String jsonContent = "";
-        try {
-            jsonContent = objectMapper.writeValueAsString(output);
-        } catch(JsonProcessingException e) {
-            e.printStackTrace();
-        }
-
-        S3Client s3 = S3Client.builder()
-            .endpointOverride(URI.create("http://host.docker.internal:9000")) // remove when using aws, no endpoint needed
-            .region(Region.of("us-east-1"))
-            .credentialsProvider(StaticCredentialsProvider.create(AwsBasicCredentials.create("user", "password"))) //need proper creds for aws
-            .serviceConfiguration(S3Configuration.builder()
-                .pathStyleAccessEnabled(true) // this line forces path-style access, remove when using aws
-                .build())
-            .build();
-        PutObjectResponse response = s3.putObject(
-            PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(key)
-                .build(),
-            RequestBody.fromString(jsonContent)
-        );
-
-        System.out.println("Object uploaded with ETag: " + response.eTag());
     }
 }
